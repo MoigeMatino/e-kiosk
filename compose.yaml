@@ -1,0 +1,36 @@
+services:
+  api:
+    build:
+      context: ./src
+    ports:
+      - 8000:8000
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    
+  db:
+    image: postgres
+    restart: always
+    # user: postgres
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    env_file:
+      - .env
+    # expose:
+    #   - 5432
+    ports:
+      - 5435:5432
+    healthcheck:
+      test: [ "CMD", "pg_isready" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  db-data:
+
+
