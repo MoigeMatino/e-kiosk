@@ -2,10 +2,12 @@ services:
   api:
     build:
       context: ./src
+    command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
     ports:
       - 8000:8000
     volumes:
-      - .:/app
+      - ./src:/app
+      - ./src/shop/migrations:/app/migrations  # Bind mount for migrations
     env_file:
       - .env
     depends_on:
