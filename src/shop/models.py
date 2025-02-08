@@ -1,6 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.base_user import BaseUserManager
-from django.db import models
+from django.db import models, transaction
 from django.core.validators import validate_email, EmailValidator
 from django.core.exceptions import ValidationError
 
@@ -114,6 +114,53 @@ class Order(models.Model):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=PENDING)
     total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    def place_order(self, items):
+        """
+        verifies stock for all items before placing the order
+        It checks stock availability and moves the order to PENDING.
+        :param items: List of tuples [(product_id, quantity), ...]
+        :return: True if order is successfully placed, False if stock is insufficient.
+        """
+        total = 0
+        # Fetch all product instances in one query
+        product_ids = [item[0] for item in items]
+        
+        with transaction.atomic():
+            products = Product.objects.filter(id__in=product_ids).select_for_update()
+            product_map = {product.id: product for product in products}
+            
+            # Check if all items are in stock before creating the order
+            for product_id, quantity in items:
+                product = product_map.get(product_id)
+                if not product or not product.is_in_stock(quantity):
+                    return False  # If any item is out of stock, order placement fails
+                total += product.get_current_price() * quantity  # Calculate total price
+
+            # Create order items
+            for product_id, quantity in items:
+                product = product_map[product_id]
+                OrderItem.objects.create(
+                    order=self,
+                    product=product,
+                    quantity=quantity,
+                    price_at_time_of_order=product.get_current_price()
+                )
+                
+            # Update total_price and save the order
+            self.total_price = total
+            
+            # Mark order as pending
+            self.status = self.PENDING
+            self.save()
+
+            # Notify admin about the new order
+            self.notify_admin()
+            
+            # Notify customer that their order has been placed successfully
+            self.notify_customer_order_placed()
+
+        return True
     
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='order_items')
