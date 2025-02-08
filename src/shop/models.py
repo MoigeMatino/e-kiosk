@@ -83,6 +83,10 @@ class Product(models.Model):
     stock = models.PositiveIntegerField()
     discount_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True) # to account for price changes in case of discounts
     
+    def clean(self):
+        if self.discount_price and self.discount_price >= self.price:
+            raise ValidationError("Discount price must be lower than the regular price.")
+    
     def is_in_stock(self, quantity):
         """
         Check if the requested quantity is available in stock.

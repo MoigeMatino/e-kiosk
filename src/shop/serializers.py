@@ -9,13 +9,23 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = ['id', 'name']
         
-# TODO add validations for product
+
 class ProductSerializer(serializers.ModelSerializer):
     category = CategorySerializer()  # Nested serializer to display category details
 
     class Meta:
         model = Product
         fields = ['id', 'name', 'category', 'price', 'stock', 'discount_price']
+        
+    def validate(self, data):
+        """
+        Ensure that discount_price is always less than price.
+        """
+        price = data.get('price')
+        discount_price = data.get('discount_price')
+        if discount_price and discount_price >= price:
+            raise serializers.ValidationError("Discount price must be lower than the regular price.")
+        return data
 
     def create(self, validated_data):
         category_data = validated_data.pop('category')
@@ -69,11 +79,6 @@ class OrderSerializer(serializers.ModelSerializer):
         if len(product_ids) != len(set(product_ids)):
             raise serializers.ValidationError("You cannot order the same product twice in the same order.")
         
-        for item in order_items:
-            product = Product.objects.get(id=item['product'])
-            if product.discount_price and product.discount_price >= product.price:
-                raise serializers.ValidationError(f"Discount price for '{product.name}' must be lower than the original price.")
-
         return data
 
     def create(self, validated_data):
