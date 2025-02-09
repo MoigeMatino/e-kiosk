@@ -1,6 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.base_user import BaseUserManager
-from django.db import models
+from django.db import models, transaction
 from django.core.validators import validate_email, EmailValidator
 from django.core.exceptions import ValidationError
 
@@ -82,6 +82,10 @@ class Product(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     stock = models.PositiveIntegerField()
     discount_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True) # to account for price changes in case of discounts
+    # TODO: override save() method to call clean()?
+    def clean(self):
+        if self.discount_price and self.discount_price >= self.price:
+            raise ValidationError("Discount price must be lower than the regular price.")
     
     def is_in_stock(self, quantity):
         """
@@ -115,13 +119,64 @@ class Order(models.Model):
     total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     created_at = models.DateTimeField(auto_now_add=True)
     
+    def place_order(self, items):
+        """
+        verifies stock for all items before placing the order
+        It checks stock availability and moves the order to PENDING.
+        :param items: List of tuples [(product_id, quantity), ...]
+        :return: True if order is successfully placed, False if stock is insufficient.
+        """
+        total = 0
+        # Fetch all product instances in one query
+        product_ids = [item[0] for item in items]
+        
+        with transaction.atomic():
+            products = Product.objects.filter(id__in=product_ids).select_for_update()
+            product_map = {product.id: product for product in products}
+            
+            # Calculate total price on order creation
+            for product_id, quantity in items:
+                product = product_map.get(product_id)
+                total += product.get_current_price() * quantity 
+
+            # Create order items
+            for product_id, quantity in items:
+                product = product_map[product_id]
+                OrderItem.objects.create(
+                    order=self,
+                    product=product,
+                    quantity=quantity,
+                    price_at_time_of_order=product.get_current_price()
+                )
+                
+            # Update total_price and save the order
+            self.total_price = total
+            
+            # Mark order as pending
+            self.status = self.PENDING
+            self.save()
+
+            # TODO: Notify admin about the new order
+            # self.notify_admin()
+            
+            # TODO: Notify customer that their order has been placed successfully
+            # self.notify_customer_order_placed()
+        
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='order_items')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField()
     price_at_time_of_order = models.DecimalField(max_digits=10, decimal_places=2)  # Capture price at time of purchase
     
-
+    def clean(self):
+        if self.quantity <= 0:
+            raise ValidationError("Quantity must be greater than zero.")
+        
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+    
+# TODO: clean up str method
 class Notification(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     message = models.TextField()
