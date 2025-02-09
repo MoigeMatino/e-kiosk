@@ -67,14 +67,29 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ['id', 'customer', 'status', 'total_price', 'order_items', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'total_price', 'created_at', 'updated_at']
+        fields = ['id', 'customer', 'status', 'total_price', 'order_items', 'created_at']
+        read_only_fields = ['id', 'total_price', 'status', 'created_at']
 
 
     def validate(self, data):
         """
         Custom validation for business rules.
         """
+        
+        errors = {}
+        if self.instance:
+            if 'total_price' in self.initial_data:
+                errors['total_price'] = "This field is read-only."
+            
+            if 'status' in self.initial_data:
+                errors['status'] = "This field is read-only."
+            
+            if 'created_at' in self.initial_data:
+                errors['created_at'] = "This field is read-only."
+                
+        if errors:
+            raise serializers.ValidationError(errors)
+        
         order_items = data.get('order_items', [])
         
         if not order_items:
@@ -84,6 +99,13 @@ class OrderSerializer(serializers.ModelSerializer):
         if len(product_ids) != len(set(product_ids)):
             raise serializers.ValidationError("You cannot order the same product twice in the same order.")
         
+        # check each order_item product stock availability
+        for order_item in order_items:
+            product = order_item['product']
+            quantity = order_item['quantity']
+            if not product.is_in_stock(quantity):
+                raise serializers.ValidationError(f"The product {product.name} is out of stock for the requested quantity.")
+        
         return data
 
     def create(self, validated_data):
@@ -91,12 +113,9 @@ class OrderSerializer(serializers.ModelSerializer):
         order = Order.objects.create(**validated_data)
 
         # store product IDs and their quantities
-        items_to_process = [(item['product'], item['quantity']) for item in order_items_data]
+        items_to_process = [(item['product'].id, item['quantity']) for item in order_items_data]
 
         # Use the place_order method to process order items
-        success = order.place_order(items_to_process)
-
-        if not success:
-            raise serializers.ValidationError("One or more items are out of stock.")
+        order.place_order(items_to_process)
 
         return order

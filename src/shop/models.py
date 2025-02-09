@@ -134,12 +134,10 @@ class Order(models.Model):
             products = Product.objects.filter(id__in=product_ids).select_for_update()
             product_map = {product.id: product for product in products}
             
-            # Check if all items are in stock before creating the order
+            # Calculate total price on order creation
             for product_id, quantity in items:
                 product = product_map.get(product_id)
-                if not product or not product.is_in_stock(quantity):
-                    return False  # If any item is out of stock, order placement fails
-                total += product.get_current_price() * quantity  # Calculate total price
+                total += product.get_current_price() * quantity 
 
             # Create order items
             for product_id, quantity in items:
@@ -158,14 +156,12 @@ class Order(models.Model):
             self.status = self.PENDING
             self.save()
 
-            # Notify admin about the new order
-            self.notify_admin()
+            # TODO: Notify admin about the new order
+            # self.notify_admin()
             
-            # Notify customer that their order has been placed successfully
-            self.notify_customer_order_placed()
-
-        return True
-    
+            # TODO: Notify customer that their order has been placed successfully
+            # self.notify_customer_order_placed()
+        
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='order_items')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
