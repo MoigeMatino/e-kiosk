@@ -1,6 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.base_user import BaseUserManager
-from django.db import models, transaction
+from django.db import models, transaction, IntegrityError
 from django.core.validators import validate_email, EmailValidator
 from django.core.exceptions import ValidationError
 
@@ -87,18 +87,26 @@ class Product(models.Model):
         if self.discount_price and self.discount_price >= self.price:
             raise ValidationError("Discount price must be lower than the regular price.")
     
-    def is_in_stock(self, quantity):
-        """
-        Check if the requested quantity is available in stock.
-        """
-        return self.stock >= quantity
-    
     def get_current_price(self):
         """
         In the case of price changes:
         Returns the discounted price if available, else the regular price
         """
         return self.discount_price if self.discount_price else self.price
+    
+    def is_in_stock(self, quantity):
+        """
+        Check if the requested quantity is available in stock.
+        """
+        return self.stock >= quantity
+    
+    def reduce_stock(self, quantity):
+        """Reduce stock when an order is approved"""
+        if self.stock >= quantity:
+            self.stock -= quantity
+            self.save(update_fields=['stock']) 
+            return True
+        raise IntegrityError(f"Insufficient stock for product {self.name}. Requested: {quantity}, Available: {self.stock}")
 
     def __str__(self):
         return self.name
@@ -160,7 +168,43 @@ class Order(models.Model):
             # self.notify_admin()
             
             # TODO: Notify customer that their order has been placed successfully
-            # self.notify_customer_order_placed()
+            # self.notify_customer()
+            
+    def approve_order(self):
+        """
+        Admin approves an order, deducting stock for each item and sending notifications.
+        """
+        if self.status != self.PENDING:
+            return False  # Order must be pending to approve
+        
+        with transaction.atomic():
+            for order_item in self.order_items.all():
+                if not order_item.product.reduce_stock(order_item.quantity):
+                    transaction.set_rollback(True)  # Roll back if any item is out of stock
+                    return False
+
+            self.status = self.COMPLETED
+            self.save()
+
+            #TODO: Notify customer
+            # self.notify_customer("Order Approved", "Your order has been approved and is being processed.")
+        
+        return True
+    
+    def cancel_order(self):
+        """Admin cancels an order and sends notifications"""
+        if self.status != self.PENDING:
+            return False
+
+        with transaction.atomic():
+            self.status = self.CANCELED
+            self.save()
+
+            #TODO: Notify customer
+            # self.notify_customer("Order Canceled", "Your order #{self.id} has been canceled.")
+
+        return True
+
         
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='order_items')
