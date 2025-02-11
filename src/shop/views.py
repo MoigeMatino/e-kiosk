@@ -39,14 +39,11 @@ class CustomOIDCCallbackView(OIDCAuthenticationCallbackView):
         # Ensure the user is authenticated
         user = request.user
         if user.is_authenticated:
-            logger.info(f"User {user.email} is authenticated. Checking phone number...")
-
+            
             # Check if phone number is missing
             if not user.phone_number:
-                logger.info("Redirecting to update-profile because phone number is missing.")
                 return redirect('update_profile')
 
-            logger.info("No redirection needed. Proceeding with the normal flow.")
         return response
 
 class UpdateProfileView(APIView):
