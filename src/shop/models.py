@@ -65,9 +65,13 @@ class User(AbstractUser):
             raise ValidationError({"email": "Invalid email format"}) from e
         
     def validate_phone_number(self):
-        """Validate that the phone number is in international format (+254700123456)"""
-        if self.phone_number:  # Only validate if the phone number is not empty
-            phone_regex = r'^\+?[1-9]\d{1,14}$'
+        """Validate and sanitize the phone number to ensure it is in international format (+254700123456)."""
+        if self.phone_number:
+            # Remove all spaces and dashes from the phone number
+            sanitized_number = re.sub(r'\s|-', '', self.phone_number)
+            self.phone_number = sanitized_number
+
+            phone_regex = r'^\+254\d{9}$'
             if not re.match(phone_regex, self.phone_number):
                 raise ValidationError({'phone_number': 'Invalid phone number format. Use: +254700123456'})
         
