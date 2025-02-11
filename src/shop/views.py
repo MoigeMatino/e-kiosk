@@ -6,9 +6,6 @@ from django.contrib.auth import get_user_model
 from .models import Product, Category, Order
 from .serializers import ProductSerializer, CategorySerializer, OrderSerializer
 from mozilla_django_oidc.views import OIDCAuthenticationCallbackView
-import logging
-#! to remove
-logger = logging.getLogger(__name__)
 
 User = get_user_model()
 

@@ -76,11 +76,6 @@ class User(AbstractUser):
         self.validate_email_format() 
         self.validate_phone_number()  
         
-    def save(self, *args, **kwargs):
-        """Ensure full validation before saving the user"""
-        self.full_clean()
-        super().save(*args, **kwargs) 
-    
     def is_admin(self):
         return self.role == self.ADMIN
 
