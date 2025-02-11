@@ -1,3 +1,4 @@
+import re
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.base_user import BaseUserManager
 from django.db import models, transaction, IntegrityError
@@ -19,7 +20,9 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault('is_staff', True)  
         extra_fields.setdefault('is_superuser', True)  
         extra_fields.setdefault('is_active', True)  
-        extra_fields.setdefault('role', 'admin')  # Set default role for superuser  
+        # extra_fields.setdefault('role', 'admin')  # Set default role for superuser  
+        # Ensure the role is always 'admin'
+        extra_fields['role'] = User.ADMIN
 
         if extra_fields.get('is_staff') is not True:  
             raise ValueError('Superuser must have is_staff=True.')  
@@ -40,12 +43,17 @@ class User(AbstractUser):
     
     username = None
     role = models.CharField(max_length=10, choices=ROLE_CHOICES)
-    phone_number = models.CharField(max_length=15, blank=True, null=True) #TODO: maybe add format restrictions using regex
+    phone_number = models.CharField(
+        max_length=15, 
+        blank=True, 
+        null=True,
+        help_text='Enter phone number in international format (e.g., +254700123456).'
+        )
     openid_sub = models.CharField(max_length=255, unique=True, blank=True, null=True)  # For OIDC customers
     email = models.EmailField(unique=True, validators=[EmailValidator(message="Invalid email format")])
     
     USERNAME_FIELD = 'email'  
-    REQUIRED_FIELDS = ['role']
+    REQUIRED_FIELDS = []
     
     objects = CustomUserManager()
 
@@ -56,9 +64,22 @@ class User(AbstractUser):
         except ValidationError as e:
             raise ValidationError({"email": "Invalid email format"}) from e
         
+    def validate_phone_number(self):
+        """Validate that the phone number is in international format (+254700123456)"""
+        if self.phone_number:  # Only validate if the phone number is not empty
+            phone_regex = r'^\+?[1-9]\d{1,14}$'
+            if not re.match(phone_regex, self.phone_number):
+                raise ValidationError({'phone_number': 'Invalid phone number format. Use: +254700123456'})
+        
     def clean(self):
         super().clean()
-        self.validate_email_format()        
+        self.validate_email_format() 
+        self.validate_phone_number()  
+        
+    def save(self, *args, **kwargs):
+        """Ensure full validation before saving the user"""
+        self.full_clean()
+        super().save(*args, **kwargs) 
     
     def is_admin(self):
         return self.role == self.ADMIN

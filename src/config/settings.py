@@ -160,8 +160,6 @@ OIDC_OP_JWKS_ENDPOINT = "https://www.googleapis.com/oauth2/v3/certs"
 OIDC_RP_SCOPES = "openid email profile"
 OIDC_RP_SIGN_ALGO = env('OIDC_RP_SIGN_ALGO', default='RS256')
 
-OIDC_RP_USER_CREATE = 'shop.utils.create_user_from_oidc'
-
 # Redirect URLs
 LOGIN_URL = "/api/v1/oidc/authenticate/"
 LOGIN_REDIRECT_URL = "/api/v1/"  # Redirect after successful login
