@@ -1,6 +1,8 @@
 import pytest
 from shop.models import Product, Order, OrderItem, Category
 from django.contrib.auth import get_user_model
+from django.test import Client
+from django.urls import reverse
 
 User = get_user_model()
 
@@ -68,3 +70,19 @@ def order_item_factory(db, product_factory, order_factory):
         defaults.update(kwargs)
         return OrderItem.objects.create(**defaults)
     return create_order_item
+
+# Authentication-related fixtures
+@pytest.fixture
+def client():
+    """Fixture for Django test client"""
+    return Client()
+
+@pytest.fixture
+def oidc_callback_url():
+    """Fixture for OIDC callback URL"""
+    return reverse('oidc_callback')
+
+@pytest.fixture
+def update_profile_url():
+    """Fixture for update_profile URL"""
+    return reverse('update_profile')

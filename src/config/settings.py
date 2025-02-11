@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     
     # third party
     'rest_framework',
+    'mozilla_django_oidc',
     
     # Local
     'shop',
@@ -143,3 +144,23 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'shop.User'
 
+AUTHENTICATION_BACKENDS = [
+    "shop.backends.CustomOIDCBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+
+# OIDC configuration
+OIDC_RP_CLIENT_ID = env('OIDC_RP_CLIENT_ID')
+OIDC_RP_CLIENT_SECRET = env('OIDC_RP_CLIENT_SECRET')
+OIDC_OP_AUTHORIZATION_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth"
+OIDC_OP_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
+OIDC_OP_USER_ENDPOINT = "https://openidconnect.googleapis.com/v1/userinfo"
+OIDC_OP_JWKS_ENDPOINT = "https://www.googleapis.com/oauth2/v3/certs"
+
+OIDC_RP_SCOPES = "openid email profile"
+OIDC_RP_SIGN_ALGO = env('OIDC_RP_SIGN_ALGO', default='RS256')
+
+# Redirect URLs
+LOGIN_URL = "/api/v1/oidc/authenticate/"
+LOGIN_REDIRECT_URL = "/api/v1/"  # Redirect after successful login
+LOGOUT_REDIRECT_URL = "/api/v1/"
