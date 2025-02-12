@@ -64,6 +64,7 @@ class CustomOIDCCallbackView(OIDCAuthenticationCallbackView):
 class UpdateProfileView(APIView):
     permission_classes = [IsAuthenticated]
 
+    # TODO add validation for phone number on view level, maybe just add user.clean() here, before user.save()
     def patch(self, request):
         user = request.user
         phone_number = request.data.get('phone_number')

@@ -1,9 +1,14 @@
 import re
+from africastalking_client import AfricasTalkingClient
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.base_user import BaseUserManager
 from django.db import models, transaction, IntegrityError
 from django.core.validators import validate_email, EmailValidator
 from django.core.exceptions import ValidationError
+from django.conf import settings
+from django.core.mail import send_mail
+from ..tasks import send_sms_task
+
 
 class CustomUserManager(BaseUserManager):  
     def create_user(self, email, password=None, **extra_fields):  
@@ -188,7 +193,7 @@ class Order(models.Model):
             # self.notify_admin()
             
             # TODO: Notify customer that their order has been placed successfully
-            # self.notify_customer()
+            self.notify_customer('order_placed', order_id=self.id)
             
     def approve_order(self):
         """
@@ -224,6 +229,54 @@ class Order(models.Model):
             # self.notify_customer("Order CANCELLED", "Your order #{self.id} has been CANCELLED.")
 
         return True
+    
+    def notify_customer(self, template_name, order_id):
+        """ Sends an SMS to the customer as a background task. """
+        phone_number = self.customer.phone_number
+        customer_id = self.customer.id
+        send_sms_task.delay(
+            to=phone_number, 
+            template_name=template_name, 
+            customer_id=customer_id, 
+            order_id=order_id
+            )
+    
+    def notify_customer(self, template_name, order_id):
+        """ Sends an SMS to the customer as a background task. """
+        phone_number = self.customer.phone_number
+        send_sms_task.delay(
+            to=phone_number,
+            template_name=template_name,
+            customer_id=self.customer.id,
+            order_id=order_id
+        )
+            
+            
+    def notify_admin(self, subject, message):
+        """
+        Sends an email notification to all admin users.
+        :param subject: The subject of the email.
+        :param message: The message body of the email.
+        """
+        admin_emails = User.objects.filter(role=User.ADMIN).values_list('email', flat=True)
+        if admin_emails:
+            try:
+                send_mail(
+                    subject=subject,
+                    message=message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=list(admin_emails),
+                    fail_silently=False
+                )
+                print("Email sent successfully to admins.")
+                admin_users = User.objects.filter(role=User.ADMIN)
+                for admin_user in admin_users:
+                    Notification.objects.create(
+                        user=admin_user,
+                        message=message
+                    )
+            except Exception as e:
+                print(f"Failed to send email to admins: {e}")
 
         
 class OrderItem(models.Model):

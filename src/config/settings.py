@@ -171,3 +171,9 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.SessionAuthentication',
     ),
 }
+
+# Africa's Talking Settings
+AT_USERNAME = 'sandbox'  
+AT_API_KEY = env('ATSK_API_KEY')
+
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL')
