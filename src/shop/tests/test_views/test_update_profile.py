@@ -59,4 +59,4 @@ def test_update_profile_unauthorized(client, update_profile_url):
     }
     response = client.patch(update_profile_url, data, content_type='application/json')
 
-    assert response.status_code == 403   
+    assert response.status_code == 401

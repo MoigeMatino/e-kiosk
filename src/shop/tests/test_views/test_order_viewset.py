@@ -2,7 +2,7 @@ import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
 from rest_framework import status
-from shop.models import Order
+from shop.models import Order, User
 
 @pytest.mark.django_db
 def test_customer_cannot_modify_status(user_customer, order_factory):
@@ -51,3 +51,41 @@ def test_invalid_status_transition(user_admin, order_factory):
     order.refresh_from_db()
     assert order.status == Order.COMPLETED
     assert "Cannot change status back to PENDING" in str(response.data)
+
+@pytest.mark.django_db
+def test_customer_cannot_access_another_customers_order(user_customer, order_factory):
+    """Ensure customers cannot access another customer's orders"""
+    client = APIClient()
+    user_customer2 = User.objects.create(email="customer2@example.com", role=User.CUSTOMER)
+    order = order_factory(customer=user_customer2)
+    client.force_authenticate(user_customer)
+
+    response = client.get(reverse('order-detail', args=[order.id]))
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    
+@pytest.mark.django_db
+def test_admin_can_access_all_orders(user_admin, order_factory):
+    """Ensure customers cannot access another customer's orders"""
+    client = APIClient()
+    user_customer2 = User.objects.create(email="customer2@example.com", role=User.CUSTOMER)
+    order1 = order_factory() # created by user_customer
+    order2 = order_factory(customer=user_customer2)
+    
+    client.force_authenticate(user_admin)
+
+    response = client.get(reverse('order-list'))
+
+    assert response.status_code == status.HTTP_200_OK
+    assert len(response.data) == 2
+
+
+@pytest.mark.django_db
+def test_unauthorized_user_cannot_access_orders(order_factory):
+    """Ensure unauthenticated users cannot access any orders"""
+    client = APIClient()
+    order = order_factory()
+
+    response = client.get(reverse('order-detail', args=[order.id]))
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
