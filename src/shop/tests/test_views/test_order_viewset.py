@@ -4,6 +4,29 @@ from rest_framework.test import APIClient
 from rest_framework import status
 from shop.models import Order, User
 
+
+def test_customer_can_create_order(user_customer, product_factory):
+    client = APIClient()
+    product = product_factory()
+    client.force_authenticate(user=user_customer)
+    response = client.post(
+        reverse('order-list'), 
+        data = {
+        "customer": user_customer.id,
+        "order_items": [
+            {
+                "product": product.id,
+                "quantity": 1
+            }
+        ],
+        "status": Order.PENDING
+    },
+    format='json'
+    
+)
+    assert response.status_code == status.HTTP_201_CREATED
+
+
 @pytest.mark.django_db
 def test_customer_cannot_modify_status(user_customer, order_factory):
     client = APIClient()
@@ -52,6 +75,17 @@ def test_invalid_status_transition(user_admin, order_factory):
     assert order.status == Order.COMPLETED
     assert "Cannot change status back to PENDING" in str(response.data)
 
+
+def test_customer_can_view_own_order(user_customer, order_factory):
+    client = APIClient()
+    order = order_factory(customer=user_customer)
+    client.force_authenticate(user=user_customer)
+    response = client.get(
+        reverse('order-detail', args=[order.id])
+        )
+    assert response.status_code == status.HTTP_200_OK
+
+
 @pytest.mark.django_db
 def test_customer_cannot_access_another_customers_order(user_customer, order_factory):
     """Ensure customers cannot access another customer's orders"""
@@ -78,6 +112,14 @@ def test_admin_can_access_all_orders(user_admin, order_factory):
 
     assert response.status_code == status.HTTP_200_OK
     assert len(response.data) == 2
+    
+
+def test_admin_cannot_delete_order(user_admin, order_factory):
+    client = APIClient()
+    order = order_factory()
+    client.force_authenticate(user_admin)
+    response = client.delete(reverse('order-detail', args=[order.id]))
+    assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
 @pytest.mark.django_db

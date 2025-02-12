@@ -6,7 +6,7 @@ from django.shortcuts import redirect
 from django.contrib.auth import get_user_model
 from .models import Product, Category, Order
 from .serializers import ProductSerializer, CategorySerializer, OrderSerializer
-from .permissions import IsAdminOrReadOnly
+from .permissions import IsAdminOrReadOnly, IsAdminOrCustomerCreateOnly
 from mozilla_django_oidc.views import OIDCAuthenticationCallbackView
 
 User = get_user_model()
@@ -34,7 +34,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         'order_items__product'
     ).all() 
     serializer_class = OrderSerializer
-    permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
+    permission_classes = [IsAuthenticated, IsAdminOrCustomerCreateOnly]
     
     def get_queryset(self):
         """Filter orders based on user role"""
