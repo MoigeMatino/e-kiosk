@@ -1,5 +1,5 @@
 import re
-from africastalking_client import AfricasTalkingClient
+from shop.africastalking_client import AfricasTalkingClient
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.base_user import BaseUserManager
 from django.db import models, transaction, IntegrityError
@@ -7,7 +7,6 @@ from django.core.validators import validate_email, EmailValidator
 from django.core.exceptions import ValidationError
 from django.conf import settings
 from django.core.mail import send_mail
-from ..tasks import send_sms_task
 
 
 class CustomUserManager(BaseUserManager):  
@@ -232,6 +231,8 @@ class Order(models.Model):
     
     def notify_customer(self, template_name, order_id):
         """ Sends an SMS to the customer as a background task. """
+        from .tasks import send_sms_task
+
         phone_number = self.customer.phone_number
         customer_id = self.customer.id
         send_sms_task.delay(
@@ -241,15 +242,15 @@ class Order(models.Model):
             order_id=order_id
             )
     
-    def notify_customer(self, template_name, order_id):
-        """ Sends an SMS to the customer as a background task. """
-        phone_number = self.customer.phone_number
-        send_sms_task.delay(
-            to=phone_number,
-            template_name=template_name,
-            customer_id=self.customer.id,
-            order_id=order_id
-        )
+    # def notify_customer(self, template_name, order_id):
+    #     """ Sends an SMS to the customer as a background task. """
+    #     phone_number = self.customer.phone_number
+    #     send_sms_task.delay(
+    #         to=phone_number,
+    #         template_name=template_name,
+    #         customer_id=self.customer.id,
+    #         order_id=order_id
+    #     )
             
             
     def notify_admin(self, subject, message):

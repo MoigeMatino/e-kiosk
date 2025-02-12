@@ -1,7 +1,7 @@
 # africastalking_client.py
 import africastalking
 import logging #! to remove
-from .constants import NOTIFICATION_TEMPLATES, DEFAULT_TEMPLATE_VALUES
+from shop.constants import NOTIFICATION_TEMPLATES
 from django.conf import settings
 from time import sleep
 
