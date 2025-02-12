@@ -134,12 +134,12 @@ class Product(models.Model):
 class Order(models.Model):
     PENDING = 'pending'
     COMPLETED = 'completed'
-    CANCELED = 'canceled'
+    CANCELLED = 'cancelled'
 
     STATUS_CHOICES = [
         (PENDING, 'Pending'),
         (COMPLETED, 'Completed'),
-        (CANCELED, 'Canceled'),
+        (CANCELLED, 'cancelled'),
     ]
 
     customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
@@ -217,11 +217,11 @@ class Order(models.Model):
             return False
 
         with transaction.atomic():
-            self.status = self.CANCELED
+            self.status = self.CANCELLED
             self.save()
 
             #TODO: Notify customer
-            # self.notify_customer("Order Canceled", "Your order #{self.id} has been canceled.")
+            # self.notify_customer("Order CANCELLED", "Your order #{self.id} has been CANCELLED.")
 
         return True
 
@@ -240,15 +240,12 @@ class OrderItem(models.Model):
         self.clean()
         super().save(*args, **kwargs)
     
-# TODO: clean up str method
+
 class Notification(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
-        return f"Notification to {self.user.username}: {self.message[:20]}..."
-    
     def __str__(self):
         user_identifier = self.user.phone_number if self.user.phone_number else self.user.email
         return f"Notification for {user_identifier}: {self.message[:20]}..."

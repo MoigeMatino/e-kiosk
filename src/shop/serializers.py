@@ -68,7 +68,7 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = ['id', 'customer', 'status', 'total_price', 'order_items', 'created_at']
-        read_only_fields = ['id', 'total_price', 'status', 'created_at']
+        read_only_fields = ['id', 'total_price', 'created_at']
 
 
     def validate(self, data):
@@ -78,11 +78,9 @@ class OrderSerializer(serializers.ModelSerializer):
         
         errors = {}
         if self.instance:
-            if 'total_price' in self.initial_data:
-                errors['total_price'] = "This field is read-only."
             
-            if 'status' in self.initial_data:
-                errors['status'] = "This field is read-only."
+            if 'total_price' in self.initial_data:
+                errors['total_price'] = "This field is read-only."            
             
             if 'created_at' in self.initial_data:
                 errors['created_at'] = "This field is read-only."
@@ -90,23 +88,36 @@ class OrderSerializer(serializers.ModelSerializer):
         if errors:
             raise serializers.ValidationError(errors)
         
-        order_items = data.get('order_items', [])
+        if not self.instance:  # Check if creating a new order
         
-        if not order_items:
-            raise serializers.ValidationError("An order must contain at least one item.")
+            order_items = data.get('order_items', [])
+            
+            if not order_items:
+                raise serializers.ValidationError("An order must contain at least one item.")
 
-        product_ids = [item['product'] for item in order_items]
-        if len(product_ids) != len(set(product_ids)):
-            raise serializers.ValidationError("You cannot order the same product twice in the same order.")
-        
-        # check each order_item product stock availability
-        for order_item in order_items:
-            product = order_item['product']
-            quantity = order_item['quantity']
-            if not product.is_in_stock(quantity):
-                raise serializers.ValidationError(f"The product {product.name} is out of stock for the requested quantity.")
+            product_ids = [item['product'] for item in order_items]
+            if len(product_ids) != len(set(product_ids)):
+                raise serializers.ValidationError("You cannot order the same product twice in the same order.")
+            
+            # check each order_item product stock availability
+            for order_item in order_items:
+                product = order_item['product']
+                quantity = order_item['quantity']
+                if not product.is_in_stock(quantity):
+                    raise serializers.ValidationError(f"The product {product.name} is out of stock for the requested quantity.")
         
         return data
+    
+    def validate_status(self, value):
+        if self.instance: # when updating an order
+            current_status = self.instance.status
+            
+            # Prevent changing COMPLETED or CANCELLED back to PENDING
+            if current_status in [Order.COMPLETED, Order.CANCELLED] and value == Order.PENDING:
+                raise serializers.ValidationError(
+                    "Cannot change status back to PENDING from COMPLETED or CANCELLED."
+                )
+        return value
 
     def create(self, validated_data):
         order_items_data = validated_data.pop('order_items')

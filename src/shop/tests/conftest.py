@@ -14,7 +14,7 @@ def user_customer(db):
 @pytest.fixture
 def user_admin(db):
     """Fixture to create an admin user with a password for Django login."""
-    return User.objects.create_user(email="admin@example.com", password="adminpassword123", is_staff=True, is_superuser=True)
+    return User.objects.create_user(email="admin@example.com", password="adminpassword123", is_staff=True, is_superuser=True, role=User.ADMIN)
 
 @pytest.fixture
 def category_factory(db):
