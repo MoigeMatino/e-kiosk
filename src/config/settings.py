@@ -168,6 +168,6 @@ LOGOUT_REDIRECT_URL = "/api/v1/"
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'mozilla_django_oidc.contrib.drf.OIDCAuthentication',  # Core OIDC Authentication
-        'rest_framework.authentication.SessionAuthentication',  # Optional for web-based sessions
+        'rest_framework.authentication.SessionAuthentication',
     ),
 }
