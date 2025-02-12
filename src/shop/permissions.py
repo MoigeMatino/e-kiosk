@@ -22,10 +22,10 @@ class IsAdminOrReadOnly(BasePermission):
         # Deny all other modifications
         return False
 
-class IsAdminOrCustomerCreateOnly(BasePermission):
+class IsOrderOwnerOrAdminWithLimitedUpdate(BasePermission):
     """
     Custom permission to allow:
-    - Admins to perform any action.
+    - Admins to perform any action except delete or fully update order.
     - Customers to create orders and view their own orders, but not update or delete them.
     """
     def has_permission(self, request, view):
