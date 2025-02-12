@@ -134,12 +134,12 @@ class Product(models.Model):
 class Order(models.Model):
     PENDING = 'pending'
     COMPLETED = 'completed'
-    CANCELED = 'canceled'
+    CANCELLED = 'cancelled'
 
     STATUS_CHOICES = [
         (PENDING, 'Pending'),
         (COMPLETED, 'Completed'),
-        (CANCELED, 'Canceled'),
+        (CANCELLED, 'cancelled'),
     ]
 
     customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
@@ -217,11 +217,11 @@ class Order(models.Model):
             return False
 
         with transaction.atomic():
-            self.status = self.CANCELED
+            self.status = self.CANCELLED
             self.save()
 
             #TODO: Notify customer
-            # self.notify_customer("Order Canceled", "Your order #{self.id} has been canceled.")
+            # self.notify_customer("Order CANCELLED", "Your order #{self.id} has been CANCELLED.")
 
         return True
 

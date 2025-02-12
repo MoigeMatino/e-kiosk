@@ -49,11 +49,11 @@ def test_approve_order_insufficient_stock_after_stock_change(order_factory, orde
 
 @pytest.mark.django_db
 def test_cancel_order(order_factory):
-    """Test that canceling a pending order changes the status to CANCELED."""
+    """Test that canceling a pending order changes the status to CANCELLED."""
     order = order_factory(status=Order.PENDING)
 
     order.cancel_order()
 
     order.refresh_from_db()
 
-    assert order.status == Order.CANCELED
+    assert order.status == Order.CANCELLED

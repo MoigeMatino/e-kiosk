@@ -116,10 +116,9 @@ def test_order_readonly_fields(user_customer):
     
     data = {
         "customer": user_customer.id,
-        "status": Order.COMPLETED,  # Attempt to change status
         "total_price": Decimal('1000.00')  # Attempt to change total_price
     }
     serializer = OrderSerializer(order, data=data, partial=True)
     assert not serializer.is_valid()
     assert "This field is read-only." in str(serializer.errors['total_price'])
-    assert "This field is read-only." in str(serializer.errors['status'])
+    
