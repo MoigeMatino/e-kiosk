@@ -26,23 +26,24 @@ jobs:
       
       - name: Create .env.prod file
         run: |
-          echo "DEBUG=${{ secrets.DEBUG }}" >> .env.prod
-          echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> .env.prod
-          echo "DJANGO_ALLOWED_HOSTS=${{ secrets.DJANGO_ALLOWED_HOSTS }}" >> .env.prod
-          echo "DB_ENGINE=${{ secrets.DB_ENGINE }}" >> .env.prod
-          echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}" >> .env.prod
-          echo "POSTGRES_USER=${{ secrets.POSTGRES_USER }}" >> .env.prod
-          echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env.prod
-          echo "POSTGRES_HOST=${{ secrets.POSTGRES_HOST }}" >> .env.prod
-          echo "POSTGRES_PORT=${{ secrets.POSTGRES_PORT }}" >> .env.prod
-          echo "OIDC_RP_CLIENT_ID=${{ secrets.OIDC_RP_CLIENT_ID }}" >> .env.prod
-          echo "OIDC_RP_CLIENT_SECRET=${{ secrets.OIDC_RP_CLIENT_SECRET }}" >> .env.prod
-          echo "OIDC_RP_SIGN_ALGO=${{ secrets.OIDC_RP_SIGN_ALGO }}" >> .env.prod
-          echo "ATSK_API_KEY=${{ secrets.ATSK_API_KEY }}" >> .env.prod
-          echo "DEFAULT_FROM_EMAIL=${{ secrets.DEFAULT_FROM_EMAIL }}" >> .env.prod
-          echo "EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}" >> .env.prod
-          echo "EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}" >> .env.prod
-      
+          cat <<EOL > .env.prod
+          DEBUG=${{ secrets.DEBUG }}
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          DJANGO_ALLOWED_HOSTS=${{ secrets.DJANGO_ALLOWED_HOSTS }}
+          DB_ENGINE=${{ secrets.DB_ENGINE }}
+          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_HOST=${{ secrets.POSTGRES_HOST }}
+          POSTGRES_PORT=${{ secrets.POSTGRES_PORT }}
+          OIDC_RP_CLIENT_ID=${{ secrets.OIDC_RP_CLIENT_ID }}
+          OIDC_RP_CLIENT_SECRET='${{ secrets.OIDC_RP_CLIENT_SECRET }}''
+          OIDC_RP_SIGN_ALGO=${{ secrets.OIDC_RP_SIGN_ALGO }}
+          ATSK_API_KEY=${{ secrets.ATSK_API_KEY }}
+          DEFAULT_FROM_EMAIL=${{ secrets.DEFAULT_FROM_EMAIL }}
+          EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}
+          EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}
+          EOL
       - name: Build and run Docker Compose
         run: |
           docker compose -f compose.prod.yaml --env-file .env.prod up -d --build
