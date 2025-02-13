@@ -70,7 +70,7 @@ jobs:
       
       - name: Build Docker image
         run: |
-          docker build -f src/Dockerfile.prod --no-cache -t ekiosk-api .
+          docker build -f src/Dockerfile.prod -t ekiosk-api src/
     
       - name: Tag and push Docker image
         run: |
