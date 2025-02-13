@@ -188,10 +188,8 @@ class Order(models.Model):
             self.status = self.PENDING
             self.save()
 
-            # TODO: Notify admin about the new order
-            # self.notify_admin()
+            self.notify_admin()
             
-            # TODO: Notify customer that their order has been placed successfully
             self.notify_customer('order_placed', order_id=self.id)
             
     def approve_order(self):
@@ -210,8 +208,7 @@ class Order(models.Model):
             self.status = self.COMPLETED
             self.save()
 
-            #TODO: Notify customer
-            # self.notify_customer("Order Approved", "Your order has been approved and is being processed.")
+            self.notify_customer('order_approved', order_id=self.id)
         
         return True
     
@@ -224,8 +221,7 @@ class Order(models.Model):
             self.status = self.CANCELLED
             self.save()
 
-            #TODO: Notify customer
-            # self.notify_customer("Order CANCELLED", "Your order #{self.id} has been CANCELLED.")
+            self.notify_customer('order_cancelled', order_id=self.id)
 
         return True
     
@@ -234,50 +230,20 @@ class Order(models.Model):
         from .tasks import send_sms_task
 
         phone_number = self.customer.phone_number
-        customer_id = self.customer.id
         send_sms_task.delay(
             to=phone_number, 
             template_name=template_name, 
-            customer_id=customer_id, 
             order_id=order_id
             )
     
-    # def notify_customer(self, template_name, order_id):
-    #     """ Sends an SMS to the customer as a background task. """
-    #     phone_number = self.customer.phone_number
-    #     send_sms_task.delay(
-    #         to=phone_number,
-    #         template_name=template_name,
-    #         customer_id=self.customer.id,
-    #         order_id=order_id
-    #     )
-            
-            
-    def notify_admin(self, subject, message):
-        """
-        Sends an email notification to all admin users.
-        :param subject: The subject of the email.
-        :param message: The message body of the email.
-        """
-        admin_emails = User.objects.filter(role=User.ADMIN).values_list('email', flat=True)
-        if admin_emails:
-            try:
-                send_mail(
-                    subject=subject,
-                    message=message,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=list(admin_emails),
-                    fail_silently=False
-                )
-                print("Email sent successfully to admins.")
-                admin_users = User.objects.filter(role=User.ADMIN)
-                for admin_user in admin_users:
-                    Notification.objects.create(
-                        user=admin_user,
-                        message=message
-                    )
-            except Exception as e:
-                print(f"Failed to send email to admins: {e}")
+    def notify_admin(self):
+        """ Notify admin via email"""
+        from .tasks import send_email_task
+        subject = f"New Order #{self.id}"
+        message = f"A new order #{self.id} placed for {self.customer.email} requires your attention."
+        admin_email = ['admin@ekiosk.com']
+        
+        send_email_task.delay(subject, message, admin_email) 
 
         
 class OrderItem(models.Model):
@@ -296,12 +262,10 @@ class OrderItem(models.Model):
     
 
 class Notification(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
     message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        user_identifier = self.user.phone_number if self.user.phone_number else self.user.email
-        return f"Notification for {user_identifier}: {self.message[:20]}..."
+        return f'{self.message[:20]}...'
 
         
