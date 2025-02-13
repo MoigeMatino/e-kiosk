@@ -1,9 +1,13 @@
 import re
+from shop.africastalking_client import AfricasTalkingClient
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.base_user import BaseUserManager
 from django.db import models, transaction, IntegrityError
 from django.core.validators import validate_email, EmailValidator
 from django.core.exceptions import ValidationError
+from django.conf import settings
+from django.core.mail import send_mail
+
 
 class CustomUserManager(BaseUserManager):  
     def create_user(self, email, password=None, **extra_fields):  
@@ -184,11 +188,9 @@ class Order(models.Model):
             self.status = self.PENDING
             self.save()
 
-            # TODO: Notify admin about the new order
-            # self.notify_admin()
+            self.notify_admin()
             
-            # TODO: Notify customer that their order has been placed successfully
-            # self.notify_customer()
+            self.notify_customer('order_placed', order_id=self.id)
             
     def approve_order(self):
         """
@@ -206,8 +208,7 @@ class Order(models.Model):
             self.status = self.COMPLETED
             self.save()
 
-            #TODO: Notify customer
-            # self.notify_customer("Order Approved", "Your order has been approved and is being processed.")
+            self.notify_customer('order_approved', order_id=self.id)
         
         return True
     
@@ -220,10 +221,29 @@ class Order(models.Model):
             self.status = self.CANCELLED
             self.save()
 
-            #TODO: Notify customer
-            # self.notify_customer("Order CANCELLED", "Your order #{self.id} has been CANCELLED.")
+            self.notify_customer('order_cancelled', order_id=self.id)
 
         return True
+    
+    def notify_customer(self, template_name, order_id):
+        """ Sends an SMS to the customer as a background task. """
+        from .tasks import send_sms_task
+
+        phone_number = self.customer.phone_number
+        send_sms_task.delay(
+            to=phone_number, 
+            template_name=template_name, 
+            order_id=order_id
+            )
+    
+    def notify_admin(self):
+        """ Notify admin via email"""
+        from .tasks import send_email_task
+        subject = f"New Order #{self.id}"
+        message = f"A new order #{self.id} placed for {self.customer.email} requires your attention."
+        admin_email = ['admin@ekiosk.com']
+        
+        send_email_task.delay(subject, message, admin_email) 
 
         
 class OrderItem(models.Model):
@@ -242,12 +262,10 @@ class OrderItem(models.Model):
     
 
 class Notification(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
     message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        user_identifier = self.user.phone_number if self.user.phone_number else self.user.email
-        return f"Notification for {user_identifier}: {self.message[:20]}..."
+        return f'{self.message[:20]}...'
 
         

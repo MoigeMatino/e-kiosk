@@ -7,32 +7,60 @@ services:
       - 8000:8000
     volumes:
       - ./src:/app
-      - ./src/shop/migrations:/app/migrations  # Bind mount for migrations
+      - ./src/shop/migrations:/app/migrations
     env_file:
       - .env
     depends_on:
-      db:
-        condition: service_healthy
-    
+      - db
+      - redis
+      - celery_worker
+  
   db:
-    image: postgres
+    image: postgres:16
     restart: always
-    # user: postgres
     volumes:
       - db-data:/var/lib/postgresql/data
     env_file:
       - .env
-    # expose:
-    #   - 5432
     ports:
       - 5435:5432
     healthcheck:
-      test: [ "CMD", "pg_isready" ]
+      test: ["CMD", "pg_isready", "-U", "postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
+  
+  redis:
+    image: redis:6
+    restart: always
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  
+  celery_worker:
+    build:
+      context: ./src
+    command: celery -A config.celery worker --loglevel=info  
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    volumes:
+      - ./src:/app
+    env_file:
+      - .env
+    restart: always
+    healthcheck:
+      test: ["CMD", "celery", "-A", "config", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   db-data:
-
-
+  redis-data:
