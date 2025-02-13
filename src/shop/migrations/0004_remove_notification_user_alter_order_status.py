@@ -4,19 +4,22 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('shop', '0003_alter_user_phone_number'),
+        ("shop", "0003_alter_user_phone_number"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='notification',
-            name='user',
+            model_name="notification",
+            name="user",
         ),
         migrations.AlterField(
-            model_name='order',
-            name='status',
-            field=models.CharField(choices=[('pending', 'Pending'), ('completed', 'Completed'), ('cancelled', 'cancelled')], default='pending', max_length=10),
+            model_name="order",
+            name="status",
+            field=models.CharField(
+                choices=[("pending", "Pending"), ("completed", "Completed"), ("cancelled", "cancelled")],
+                default="pending",
+                max_length=10,
+            ),
         ),
     ]
