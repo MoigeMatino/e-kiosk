@@ -46,7 +46,9 @@ class ProductViewSet(viewsets.ModelViewSet):
 
             for row in reader:
                 category_name = row.pop('category').strip()  # Get the category name from the row
-                category, _ = Category.objects.get_or_create(name=category_name)  # Ensure category exists
+                category = Category.objects.filter(name=category_name).first()
+                if not category:
+                    category = Category.objects.create(name=category_name)
                 
                 row['category'] = {"id": category.id, "name": category.name} # pass a dictionary to serializer
                 

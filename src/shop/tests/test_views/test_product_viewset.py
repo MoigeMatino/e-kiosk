@@ -3,7 +3,7 @@ import io
 from django.urls import reverse
 from rest_framework.test import APIClient
 from rest_framework import status
-from shop.models import User, Product
+from shop.models import Product
 
 @pytest.mark.django_db
 def test_admin_can_update_product(user_admin, product_factory):
@@ -104,6 +104,7 @@ def test_bulk_upload_products_success(user_admin):
     
 @pytest.mark.django_db
 def test_bulk_upload_products_partial_failures(user_admin):
+    """Test bulk upload of products with some rows missing"""
     client = APIClient()
     client.force_authenticate(user=user_admin)
     
