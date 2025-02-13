@@ -21,6 +21,7 @@ drf-yasg==1.21.8
 exceptiongroup==1.2.2
 filelock==3.17.0
 future==1.0.0
+gunicorn==23.0.0
 identify==2.6.7
 idna==3.10
 inflection==0.5.1
