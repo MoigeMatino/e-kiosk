@@ -1,21 +1,21 @@
 import pytest
 from rest_framework.exceptions import ValidationError
+
+from shop.models import Category, Product
 from shop.serializers import ProductSerializer
-from shop.models import Product, Category
+
 
 @pytest.fixture
 def category():
     return Category.objects.create(name="Electronics")
 
+
 @pytest.fixture
 def product(category):
     return Product.objects.create(
-        name="Smartphone",
-        category=category,
-        price=1000,
-        stock=10,
-        discount_price=900
+        name="Smartphone", category=category, price=1000, stock=10, discount_price=900
     )
+
 
 # Test for serialization
 @pytest.mark.django_db
@@ -27,9 +27,10 @@ def test_product_serializer_serialization(product):
         "category": {"id": product.category.id, "name": "Electronics"},
         "price": "1000.00",
         "stock": 10,
-        "discount_price": "900.00"
+        "discount_price": "900.00",
     }
     assert serializer.data == expected_data
+
 
 # Test for deserialization with valid data
 @pytest.mark.django_db
@@ -39,7 +40,7 @@ def test_product_serializer_deserialization(category):
         "category": {"id": category.id, "name": "Electronics"},
         "price": 1500,
         "stock": 5,
-        "discount_price": 1200
+        "discount_price": 1200,
     }
     serializer = ProductSerializer(data=data)
     assert serializer.is_valid()
@@ -49,6 +50,7 @@ def test_product_serializer_deserialization(category):
     assert product.price == 1500
     assert product.discount_price == 1200
 
+
 # Test for validation error when discount_price > price
 @pytest.mark.django_db
 def test_product_serializer_validation_error(category):
@@ -57,12 +59,13 @@ def test_product_serializer_validation_error(category):
         "category": {"id": category.id, "name": "Electronics"},
         "price": 800,
         "stock": 3,
-        "discount_price": 900  # Invalid: discount_price > price
+        "discount_price": 900,  # Invalid: discount_price > price
     }
     serializer = ProductSerializer(data=data)
     with pytest.raises(ValidationError) as excinfo:
         serializer.is_valid(raise_exception=True)
     assert "must be lower than the regular price" in str(excinfo.value)
+
 
 # Test for updating a product
 @pytest.mark.django_db
@@ -72,7 +75,7 @@ def test_product_serializer_update(product):
         "category": {"id": product.category.id, "name": "Electronics"},
         "price": 1100,
         "stock": 8,
-        "discount_price": 950
+        "discount_price": 950,
     }
     serializer = ProductSerializer(instance=product, data=data)
     assert serializer.is_valid()

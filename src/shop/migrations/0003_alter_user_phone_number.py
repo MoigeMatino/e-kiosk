@@ -4,15 +4,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('shop', '0002_alter_user_managers_remove_user_username'),
+        ("shop", "0002_alter_user_managers_remove_user_username"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='user',
-            name='phone_number',
-            field=models.CharField(blank=True, help_text='Enter phone number in international format (e.g., +254700123456).', max_length=15, null=True),
+            model_name="user",
+            name="phone_number",
+            field=models.CharField(
+                blank=True,
+                help_text="Enter phone number in international format (e.g., +254700123456).",
+                max_length=15,
+                null=True,
+            ),
         ),
     ]
