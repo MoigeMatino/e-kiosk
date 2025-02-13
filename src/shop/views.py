@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import redirect
 from django.contrib.auth import get_user_model
+from django.db.models import Avg, Q
 from .models import Product, Category, Order
 from .serializers import ProductSerializer, CategorySerializer, OrderSerializer
 from .permissions import IsAdminOrReadOnly, IsOrderOwnerOrAdminWithLimitedUpdate
@@ -81,6 +82,45 @@ class CategoryViewSet(viewsets.ModelViewSet):
     """
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
+    permission_classes = [IsAdminOrReadOnly]
+    
+    @action(detail=True, methods=['get'])
+    def calculate_average_price(self, request, pk):
+        """
+        Custom action to calculate the average price of products in the given category
+        and all its immediate and nested subcategories.
+        """
+        category = self.get_object()
+
+        # Gets the current category and its subcategories (up to two levels deep)
+        subcategories = Category.objects.filter(
+            Q(id=category.id) | Q(parent=category) | Q(parent__parent=category)
+        )
+
+        # Gets all products under the current category and its subcategories
+        products = Product.objects.filter(
+            Q(category=category) | Q(category__parent=category) | Q(category__parent__parent=category)
+        )
+
+
+        if not products.exists():
+            return Response(
+                {"message": "No products found in this category or its subcategories."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Calculate the average price
+        average_price = products.aggregate(avg_price=Avg("price"))["avg_price"]
+
+        return Response(
+            {
+                "category": category.name,
+                "average_price": average_price,
+                "products_count": products.count(),
+                "subcategory_count": subcategories.count() - 1,  
+            },
+            status=status.HTTP_200_OK,
+        )
     
 class OrderViewSet(viewsets.ModelViewSet):
     """
