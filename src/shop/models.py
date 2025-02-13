@@ -1,64 +1,62 @@
 import re
-from shop.africastalking_client import AfricasTalkingClient
-from django.contrib.auth.models import AbstractUser
+
 from django.contrib.auth.base_user import BaseUserManager
-from django.db import models, transaction, IntegrityError
-from django.core.validators import validate_email, EmailValidator
+from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
-from django.conf import settings
-from django.core.mail import send_mail
+from django.core.validators import EmailValidator, validate_email
+from django.db import IntegrityError, models, transaction
 
 
-class CustomUserManager(BaseUserManager):  
-    def create_user(self, email, password=None, **extra_fields):  
-        if not email:  
-            raise ValueError('The Email field must be set')  
-        email = self.normalize_email(email)  
-        user = self.model(email=email, **extra_fields)  
-        if password:  
-            user.set_password(password)  
-        user.save(using=self._db)  
-        return user  
+class CustomUserManager(BaseUserManager):
+    def create_user(self, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError("The Email field must be set")
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        if password:
+            user.set_password(password)
+        user.save(using=self._db)
+        return user
 
-    def create_superuser(self, email, password=None, **extra_fields):  
-        extra_fields.setdefault('is_staff', True)  
-        extra_fields.setdefault('is_superuser', True)  
-        extra_fields.setdefault('is_active', True)  
-        # extra_fields.setdefault('role', 'admin')  # Set default role for superuser  
+    def create_superuser(self, email, password=None, **extra_fields):
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+        extra_fields.setdefault("is_active", True)
+        # extra_fields.setdefault('role', 'admin')  # Set default role for superuser
         # Ensure the role is always 'admin'
-        extra_fields['role'] = User.ADMIN
+        extra_fields["role"] = User.ADMIN
 
-        if extra_fields.get('is_staff') is not True:  
-            raise ValueError('Superuser must have is_staff=True.')  
-        if extra_fields.get('is_superuser') is not True:  
-            raise ValueError('Superuser must have is_superuser=True.')  
+        if extra_fields.get("is_staff") is not True:
+            raise ValueError("Superuser must have is_staff=True.")
+        if extra_fields.get("is_superuser") is not True:
+            raise ValueError("Superuser must have is_superuser=True.")
 
         return self.create_user(email, password, **extra_fields)
 
 
 class User(AbstractUser):
-    CUSTOMER = 'customer'
-    ADMIN = 'admin'
+    CUSTOMER = "customer"
+    ADMIN = "admin"
 
     ROLE_CHOICES = [
-        (CUSTOMER, 'Customer'),
-        (ADMIN, 'Admin'),
+        (CUSTOMER, "Customer"),
+        (ADMIN, "Admin"),
     ]
-    
+
     username = None
     role = models.CharField(max_length=10, choices=ROLE_CHOICES)
     phone_number = models.CharField(
-        max_length=15, 
-        blank=True, 
+        max_length=15,
+        blank=True,
         null=True,
-        help_text='Enter phone number in international format (e.g., +254700123456).'
-        )
+        help_text="Enter phone number in international format (e.g., +254700123456).",
+    )
     openid_sub = models.CharField(max_length=255, unique=True, blank=True, null=True)  # For OIDC customers
     email = models.EmailField(unique=True, validators=[EmailValidator(message="Invalid email format")])
-    
-    USERNAME_FIELD = 'email'  
+
+    USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
-    
+
     objects = CustomUserManager()
 
     def validate_email_format(self):
@@ -67,23 +65,23 @@ class User(AbstractUser):
             validate_email(self.email)
         except ValidationError as e:
             raise ValidationError({"email": "Invalid email format"}) from e
-        
+
     def validate_phone_number(self):
         """Validate and sanitize the phone number to ensure it is in international format (+254700123456)."""
         if self.phone_number:
             # Remove all spaces and dashes from the phone number
-            sanitized_number = re.sub(r'\s|-', '', self.phone_number)
+            sanitized_number = re.sub(r"\s|-", "", self.phone_number)
             self.phone_number = sanitized_number
 
-            phone_regex = r'^\+254\d{9}$'
+            phone_regex = r"^\+254\d{9}$"
             if not re.match(phone_regex, self.phone_number):
-                raise ValidationError({'phone_number': 'Invalid phone number format. Use: +254700123456'})
-        
+                raise ValidationError({"phone_number": "Invalid phone number format. Use: +254700123456"})
+
     def clean(self):
         super().clean()
-        self.validate_email_format() 
-        self.validate_phone_number()  
-        
+        self.validate_email_format()
+        self.validate_phone_number()
+
     def is_admin(self):
         return self.role == self.ADMIN
 
@@ -92,65 +90,75 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.email
-    
+
+
 class Category(models.Model):
     name = models.CharField(max_length=255)
-    parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='subcategories')
+    parent = models.ForeignKey(
+        "self", on_delete=models.CASCADE, null=True, blank=True, related_name="subcategories"
+    )
 
     def __str__(self):
         return self.name
-    
+
+
 class Product(models.Model):
     name = models.CharField(max_length=255)
-    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products')
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="products")
     price = models.DecimalField(max_digits=10, decimal_places=2)
     stock = models.PositiveIntegerField()
-    discount_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True) # to account for price changes in case of discounts
+    discount_price = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )  # to account for price changes in case of discounts
+
     # TODO: override save() method to call clean()?
     def clean(self):
         if self.discount_price and self.discount_price >= self.price:
             raise ValidationError("Discount price must be lower than the regular price.")
-    
+
     def get_current_price(self):
         """
         In the case of price changes:
         Returns the discounted price if available, else the regular price
         """
         return self.discount_price if self.discount_price else self.price
-    
+
     def is_in_stock(self, quantity):
         """
         Check if the requested quantity is available in stock.
         """
         return self.stock >= quantity
-    
+
     def reduce_stock(self, quantity):
         """Reduce stock when an order is approved"""
         if self.stock >= quantity:
             self.stock -= quantity
-            self.save(update_fields=['stock']) 
+            self.save(update_fields=["stock"])
             return True
-        raise IntegrityError(f"Insufficient stock for product {self.name}. Requested: {quantity}, Available: {self.stock}")
+        raise IntegrityError(
+            f"Insufficient stock for product {self.name}. Requested: {quantity}, Available: {self.stock}"
+        )
 
     def __str__(self):
         return self.name
-    
+
+
 class Order(models.Model):
-    PENDING = 'pending'
-    COMPLETED = 'completed'
-    CANCELLED = 'cancelled'
+    PENDING = "pending"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
 
     STATUS_CHOICES = [
-        (PENDING, 'Pending'),
-        (COMPLETED, 'Completed'),
-        (CANCELLED, 'cancelled'),
+        (PENDING, "Pending"),
+        (COMPLETED, "Completed"),
+        (CANCELLED, "cancelled"),
     ]
 
-    customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
+    customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="orders")
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=PENDING)
     total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     def place_order(self, items):
         """
         verifies stock for all items before placing the order
@@ -161,15 +169,15 @@ class Order(models.Model):
         total = 0
         # Fetch all product instances in one query
         product_ids = [item[0] for item in items]
-        
+
         with transaction.atomic():
             products = Product.objects.filter(id__in=product_ids).select_for_update()
             product_map = {product.id: product for product in products}
-            
+
             # Calculate total price on order creation
             for product_id, quantity in items:
                 product = product_map.get(product_id)
-                total += product.get_current_price() * quantity 
+                total += product.get_current_price() * quantity
 
             # Create order items
             for product_id, quantity in items:
@@ -178,27 +186,27 @@ class Order(models.Model):
                     order=self,
                     product=product,
                     quantity=quantity,
-                    price_at_time_of_order=product.get_current_price()
+                    price_at_time_of_order=product.get_current_price(),
                 )
-                
+
             # Update total_price and save the order
             self.total_price = total
-            
+
             # Mark order as pending
             self.status = self.PENDING
             self.save()
 
             self.notify_admin()
-            
-            self.notify_customer('order_placed', order_id=self.id)
-            
+
+            self.notify_customer("order_placed", order_id=self.id)
+
     def approve_order(self):
         """
         Admin approves an order, deducting stock for each item and sending notifications.
         """
         if self.status != self.PENDING:
             return False  # Order must be pending to approve
-        
+
         with transaction.atomic():
             for order_item in self.order_items.all():
                 if not order_item.product.reduce_stock(order_item.quantity):
@@ -208,12 +216,12 @@ class Order(models.Model):
             self.status = self.COMPLETED
             self.save()
 
-            self.notify_customer('order_approved', order_id=self.id)
-        
+            self.notify_customer("order_approved", order_id=self.id)
+
         return True
-    
+
     def cancel_order(self):
-        """Admin cancels an order and sends notifications"""
+        """Admin cancels an order notification sent to customer"""
         if self.status != self.PENDING:
             return False
 
@@ -221,51 +229,48 @@ class Order(models.Model):
             self.status = self.CANCELLED
             self.save()
 
-            self.notify_customer('order_cancelled', order_id=self.id)
+            self.notify_customer("order_cancelled", order_id=self.id)
 
         return True
-    
+
     def notify_customer(self, template_name, order_id):
-        """ Sends an SMS to the customer as a background task. """
+        """Sends an SMS to the customer as a background task."""
         from .tasks import send_sms_task
 
         phone_number = self.customer.phone_number
-        send_sms_task.delay(
-            to=phone_number, 
-            template_name=template_name, 
-            order_id=order_id
-            )
-    
+        send_sms_task.delay(to=phone_number, template_name=template_name, order_id=order_id)
+
     def notify_admin(self):
-        """ Notify admin via email"""
+        """Notify admin via email"""
         from .tasks import send_email_task
+
         subject = f"New Order #{self.id}"
         message = f"A new order #{self.id} placed for {self.customer.email} requires your attention."
-        admin_email = ['admin@ekiosk.com']
-        
-        send_email_task.delay(subject, message, admin_email) 
+        admin_email = ["admin@ekiosk.com"]
 
-        
+        send_email_task.delay(subject, message, admin_email)
+
+
 class OrderItem(models.Model):
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='order_items')
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="order_items")
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField()
-    price_at_time_of_order = models.DecimalField(max_digits=10, decimal_places=2)  # Capture price at time of purchase
-    
+    price_at_time_of_order = models.DecimalField(
+        max_digits=10, decimal_places=2
+    )  # Capture price at time of purchase
+
     def clean(self):
         if self.quantity <= 0:
             raise ValidationError("Quantity must be greater than zero.")
-        
+
     def save(self, *args, **kwargs):
         self.clean()
         super().save(*args, **kwargs)
-    
+
 
 class Notification(models.Model):
     message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'{self.message[:20]}...'
-
-        
+        return f"{self.message[:20]}..."

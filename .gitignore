@@ -11,3 +11,10 @@ db.sqlite3
 .env.dev
 .env.prod.db
 .env.prod
+
+# Pre-commit-related
+.pre-commit/
+.pre-commit-config.yaml.log
+
+# Docker-specific
+docker-compose.override.yml
