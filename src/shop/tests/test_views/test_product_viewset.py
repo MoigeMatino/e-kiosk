@@ -1,4 +1,5 @@
 import pytest
+import io
 from django.urls import reverse
 from rest_framework.test import APIClient
 from rest_framework import status
@@ -75,3 +76,53 @@ def test_unauthenticated_user_cannot_modify_product(product_factory):
         format='json'
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    
+@pytest.mark.django_db
+def test_bulk_upload_products_success(user_admin):
+    """Test bulk upload of products using a CSV file"""
+    client = APIClient()
+    client.force_authenticate(user=user_admin)
+    
+    # Mock a CSV file content
+    csv_content = """name,stock,price,category
+    Product 1,10,100.0,Category A
+    Product 2,20,200.0,Category B"""
+    
+    csv_file = io.BytesIO(csv_content.encode("utf-8"))
+    csv_file.name = "products.csv"  # Simulate an uploaded CSV file
+
+    response = client.post(
+        reverse('product-bulk-upload'),
+        {'file': csv_file},
+        format='multipart'
+    )
+    
+    assert response.status_code == status.HTTP_201_CREATED
+    assert Product.objects.count() == 2
+    assert response.data["products_created"] == 2
+    assert len(response.data["errors"]) == 0
+    
+@pytest.mark.django_db
+def test_bulk_upload_products_partial_failures(user_admin):
+    client = APIClient()
+    client.force_authenticate(user=user_admin)
+    
+    # Mock a CSV file content with one valid and one invalid row
+    csv_content = """name,stock,price,category
+    Product 1,10,100,Category A
+    ,20,200,Category B"""  # Missing name in the second row
+    
+    csv_file = io.BytesIO(csv_content.encode("utf-8"))
+    csv_file.name = "products.csv"
+
+    response = client.post(
+        reverse('product-bulk-upload'),
+        {'file': csv_file},
+        format='multipart'
+    )
+    
+    assert response.status_code == status.HTTP_207_MULTI_STATUS
+    assert Product.objects.count() == 1
+    assert response.data["products_created"] == 1
+    assert len(response.data["errors"]) == 1
+    assert "This field may not be blank." in response.data["errors"][0]["errors"]["name"][0]

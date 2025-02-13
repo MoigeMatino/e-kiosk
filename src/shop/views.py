@@ -1,5 +1,9 @@
+import csv
+import io
 from rest_framework import viewsets, status, permissions
 from rest_framework.response import Response
+from rest_framework.decorators import action
+from rest_framework.parsers import MultiPartParser
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import redirect
@@ -19,6 +23,56 @@ class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
     permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
     
+    @action(detail=False, methods=['post'], parser_classes=[MultiPartParser])
+    def bulk_upload(self, request):
+        """Bulk upload products from a CSV file."""
+        file = request.FILES.get('file')
+        if not file:
+            return Response({"error": "No file uploaded."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not file.name.endswith('.csv'):
+            return Response({"error": "Please upload a valid CSV file."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if file.size == 0:
+            return Response({"error": "The uploaded file is empty."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        
+        products_created = 0
+        errors = []
+
+        try:
+            decoded_file = io.TextIOWrapper(file, encoding='utf-8')
+            reader = csv.DictReader(decoded_file)
+
+            for row in reader:
+                category_name = row.pop('category').strip()  # Get the category name from the row
+                category, _ = Category.objects.get_or_create(name=category_name)  # Ensure category exists
+                
+                row['category'] = {"id": category.id, "name": category.name} # pass a dictionary to serializer
+                
+                serializer = ProductSerializer(data=row)
+                if serializer.is_valid():
+                    serializer.save()
+                    products_created += 1
+                else:
+                    errors.append({"row": row, "errors": serializer.errors})
+        
+        except Exception as e:
+            return Response({"error": f"An error occurred while processing the file: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        response_data = {
+            "products_created": products_created,
+            "errors": errors,
+        }
+        
+        # if some products were created and some were not(had errors)
+        if products_created > 0 and errors:
+            return Response(response_data, status=status.HTTP_207_MULTI_STATUS)
+        elif products_created > 0:
+            return Response(response_data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+        
 class CategoryViewSet(viewsets.ModelViewSet):
     """
     viewset for listing and editing categories
