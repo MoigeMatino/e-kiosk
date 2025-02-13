@@ -37,7 +37,7 @@ jobs:
           POSTGRES_HOST=${{ secrets.POSTGRES_HOST }}
           POSTGRES_PORT=${{ secrets.POSTGRES_PORT }}
           OIDC_RP_CLIENT_ID=${{ secrets.OIDC_RP_CLIENT_ID }}
-          OIDC_RP_CLIENT_SECRET='${{ secrets.OIDC_RP_CLIENT_SECRET }}''
+          OIDC_RP_CLIENT_SECRET='${{ secrets.OIDC_RP_CLIENT_SECRET }}'
           OIDC_RP_SIGN_ALGO=${{ secrets.OIDC_RP_SIGN_ALGO }}
           ATSK_API_KEY=${{ secrets.ATSK_API_KEY }}
           DEFAULT_FROM_EMAIL=${{ secrets.DEFAULT_FROM_EMAIL }}
