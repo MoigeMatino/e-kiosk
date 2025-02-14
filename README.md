@@ -1,10 +1,10 @@
-# ekiosk
+# 🛒ekiosk
 
 ekiosk is a Django REST Framework (DRF) application for managing an online kiosk. It features authentication via OpenID Connect for customers and Django’s built-in admin for staff users, customer order management, and automated email and SMS notifications. Background tasks are handled efficiently using Celery with Redis as the message broker. The project is fully containerized with Docker and includes a CI/CD pipeline powered by GitHub Actions, with support for deployment to Kubernetes clusters for scalability and reliability.
 
 ---
 
-## Features
+## ✨Features
 
 - **Customer and Order Management**: Manage customers, product categories, products and orders.
 - **Authentication**: Secure login and user management using OpenID Connect for customers, while staff users (admins) manage the system through Django’s built-in admin interface.
@@ -19,7 +19,7 @@ ekiosk is a Django REST Framework (DRF) application for managing an online kiosk
 
 ---
 
-## Architecture Overview
+## 🛠 Architecture Overview
 
 - **Backend**: Django REST Framework
 - **Database**: PostgreSQL (via Docker Compose)
@@ -31,7 +31,7 @@ ekiosk is a Django REST Framework (DRF) application for managing an online kiosk
 
 ---
 
-## Setup Instructions
+## 🔧Setup Instructions
 
 ### Prerequisites
 
@@ -117,7 +117,7 @@ This section describes the main models in the application and their relationship
 *   Stores details about each product.
 *   Key Fields: `name`, `price`, `category`, `stock``,discount_price`
 
-#### Discount price field is meant to account for price changes in case of discounts
+**Discount price** field is meant to account for price changes in case of discounts
 
 #### Order Model
 
@@ -172,7 +172,7 @@ Order processing in this application ensures a streamlined workflow from placeme
 
 ### Overview
 
-The notification system is designed to keep stakeholders informed at key points during the order lifecycle. Notifications are sent through **Email** and **SMS** channels to ensure timely communication.
+The notification system is designed to keep customers and the admin informed at key points during the order lifecycle. Notifications are sent through **Email** and **SMS** channels to ensure timely communication.
 
 *   **Email Provider**: Google SMTP
 *   **SMS Provider**: Africa's Talking
