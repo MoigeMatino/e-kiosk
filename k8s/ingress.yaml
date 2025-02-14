@@ -1,0 +1,33 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ekiosk-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 50m  # For handling large file uploads
+    nginx.ingress.kubernetes.io/permanent-redirect: /api/v1  # Redirects root to /api/v1
+spec:
+  rules:
+  - host: api.ekiosk.local  
+    http:
+      paths:
+      - path: /admin(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: ekiosk-api-service  
+            port:
+              number: 8000
+      - path: /api/v1(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: ekiosk-api-service
+            port:
+              number: 8000
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ekiosk-api-service
+            port:
+              number: 8000

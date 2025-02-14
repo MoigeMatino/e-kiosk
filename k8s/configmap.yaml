@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ekiosk-config
+data:
+  # DJANGO_ALLOWED_HOSTS to specify which hosts/domains are allowed to serve the application.
+  # In a real production environment, I would list specific domains or IPs.
+  # Example: "ekiosk.com,api.ekiosk.com"
+  # Using "*" allows all hosts, which is NOT recommended for production due to security risks.
+  # Kept this for local development with minikube and for testing only.
+  DJANGO_ALLOWED_HOSTS: "*"
+  
+  # Set DEBUG to "False" for production to avoid exposing sensitive information in error pages.
+  DEBUG: "False"
+  
+  # Database configuration for PostgreSQL.
+  DB_ENGINE: "django.db.backends.postgresql"
+  POSTGRES_HOST: "postgres"       # The service name for the PostgreSQL instance.
+  POSTGRES_PORT: "5432"           # Default PostgreSQL port.
+
+  # OpenID Connect (OIDC) configuration for Google OAuth 2.0 integration.
+  OIDC_OP_AUTHORIZATION_ENDPOINT: "https://accounts.google.com/o/oauth2/v2/auth"
+  OIDC_OP_TOKEN_ENDPOINT: "https://oauth2.googleapis.com/token"
+  OIDC_OP_USER_ENDPOINT: "https://openidconnect.googleapis.com/v1/userinfo"
+  OIDC_OP_JWKS_ENDPOINT: "https://www.googleapis.com/oauth2/v3/certs"
+  
+  # Default email address used for sending notifications or system emails.
+  DEFAULT_FROM_EMAIL: "info@ekiosk.com"
+  
+  # Algorithm used for signing OpenID Connect tokens.
+  OIDC_RP_SIGN_ALGO: "RS256"
+  
+  # Celery configuration for task queue management using Redis as the message broker and result backend.
+  CELERY_BROKER_URL: "redis://redis:6379/0"      # Redis as the broker.
+  CELERY_ACCEPT_CONTENT: "json"                  # Specifies accepted content types.
+  CELERY_TASK_SERIALIZER: "json"                 # Tasks are serialized in JSON format.
+  CELERY_RESULT_BACKEND: "redis://redis:6379/0"  # Redis used to store task results.
