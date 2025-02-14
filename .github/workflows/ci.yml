@@ -74,5 +74,30 @@ jobs:
     
       - name: Tag and push Docker image
         run: |
-          docker tag ekiosk-api ${{ secrets.DOCKER_HUB_USERNAME }}/ekiosk-api:latest
-          docker push ${{ secrets.DOCKER_HUB_USERNAME }}/ekiosk-api:latest
+          docker tag ekiosk-api ${{ secrets.DOCKER_HUB_USERNAME }}/ekiosk-api:v1
+          docker push ${{ secrets.DOCKER_HUB_USERNAME }}/ekiosk-api:v1
+
+  deploy-to-k8s:
+    needs: push-to-dockerhub
+    runs-on: ubuntu-latest
+    # This condition will skip the job as this is meant to simulate deployment to a production cluster
+    if: github.event_name == 'none' 
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+
+      - name: Configure kubectl for Production Cluster (Sample)
+        run: echo "This step configures kubectl for production."
+
+      - name: Apply Kubernetes manifests (Sample)
+        run: |
+          echo "kubectl apply -f deployment.yaml"
+          echo "kubectl apply -f service.yaml"
+        
