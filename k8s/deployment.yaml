@@ -1,0 +1,132 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ekiosk
+  labels:
+    app: ekiosk
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ekiosk
+  template:
+    metadata:
+      labels:
+        app: ekiosk
+    spec:
+      containers:
+      - name: ekiosk
+        image: matinodev/ekiosk-api:v1
+        ports:
+        - containerPort: 8000
+        env:
+          # ConfigMap Variables
+          - name: DJANGO_ALLOWED_HOSTS
+            valueFrom:
+              configMapKeyRef:
+                name: ekiosk-config
+                key: DJANGO_ALLOWED_HOSTS
+          - name: DEBUG
+            valueFrom:
+              configMapKeyRef:
+                name: ekiosk-config
+                key: DEBUG
+          - name: DB_ENGINE
+            valueFrom:
+              configMapKeyRef:
+                name: ekiosk-config
+                key: DB_ENGINE
+          - name: POSTGRES_HOST
+            valueFrom:
+              configMapKeyRef:
+                name: ekiosk-config
+                key: POSTGRES_HOST
+          - name: POSTGRES_PORT
+            valueFrom:
+              configMapKeyRef:
+                name: ekiosk-config
+                key: POSTGRES_PORT
+          - name: OIDC_OP_AUTHORIZATION_ENDPOINT
+            valueFrom:
+              configMapKeyRef:
+                name: ekiosk-config
+                key: OIDC_OP_AUTHORIZATION_ENDPOINT
+          - name: OIDC_OP_TOKEN_ENDPOINT
+            valueFrom:
+              configMapKeyRef:
+                name: ekiosk-config
+                key: OIDC_OP_TOKEN_ENDPOINT
+          - name: OIDC_OP_USER_ENDPOINT
+            valueFrom:
+              configMapKeyRef:
+                name: ekiosk-config
+                key: OIDC_OP_USER_ENDPOINT
+          - name: OIDC_OP_JWKS_ENDPOINT
+            valueFrom:
+              configMapKeyRef:
+                name: ekiosk-config
+                key: OIDC_OP_JWKS_ENDPOINT
+          - name: CELERY_BROKER_URL
+            valueFrom:
+              configMapKeyRef:
+                name: ekiosk-config
+                key: CELERY_BROKER_URL
+          - name: DEFAULT_FROM_EMAIL
+            valueFrom:
+              configMapKeyRef:
+                name: ekiosk-config
+                key: DEFAULT_FROM_EMAIL
+          # Secret Variables
+          - name: SECRET_KEY
+            valueFrom:
+              secretKeyRef:
+                name: ekiosk-secrets
+                key: SECRET_KEY
+          - name: POSTGRES_DB
+            valueFrom:
+              secretKeyRef:
+                name: ekiosk-secrets
+                key: POSTGRES_DB
+          - name: POSTGRES_USER
+            valueFrom:
+              secretKeyRef:
+                name: ekiosk-secrets
+                key: POSTGRES_USER
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: ekiosk-secrets
+                key: POSTGRES_PASSWORD
+          - name: OIDC_RP_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                name: ekiosk-secrets
+                key: OIDC_RP_CLIENT_ID
+          - name: OIDC_RP_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: ekiosk-secrets
+                key: OIDC_RP_CLIENT_SECRET
+          - name: ATSK_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: ekiosk-secrets
+                key: ATSK_API_KEY
+          - name: EMAIL_HOST_USER
+            valueFrom:
+              secretKeyRef:
+                name: ekiosk-secrets
+                key: EMAIL_HOST_USER
+          - name: EMAIL_HOST_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: ekiosk-secrets
+                key: EMAIL_HOST_PASSWORD
+        imagePullPolicy: Always
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1024Mi"
+            cpu: "1000m"
